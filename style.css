@@ -1,0 +1,118 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: inherit;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+header {
+  position: sticky;
+  top: 0;
+  background-color: #2d3439;
+  color: #fff;
+  padding: 15px;
+  text-align: center;
+  z-index: 1000;
+  border-bottom: 2px solid #00c46a;
+}
+
+li {
+  list-style: none;
+}
+
+.input-container input {
+  padding: 10px;
+  margin: 0 5px;
+  border: 1px solid #00c46a;
+  border-radius: 25px;
+  background-color: #2d3439;
+  color: #fff;
+}
+
+button {
+  padding: 10px 20px;
+  background-color: #2d3439;
+  color: #fff;
+  border: 1px solid #00c46a;
+  border-radius: 25px;
+  cursor: pointer;
+}
+
+.main-content {
+  display: flex;
+  flex: 1;
+  z-index: 1;
+  /* Ensure the map content appears above the sidebar */
+}
+
+.sidebar {
+  min-width: 400px;
+  width: 20%;
+  padding: 10px;
+  background-color: #2d3439;
+  overflow-y: auto;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  resize: horizontal;
+  overflow-x: hidden;
+  z-index: 0;
+  height: 100vh;
+  /* Set a lower z-index for the sidebar */
+}
+
+#map {
+  /* margin-left: 400px; */
+  width: 100%;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  padding: 10px;
+  background-color: #42484d;
+  border-radius: 10px;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+  color: #fff;
+}
+
+.direction-icon {
+  font-size: 10px;
+  margin-right: 10px;
+}
+
+.instruction-text {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.distance {
+  /* font-weight: bold; */
+}
+
+.path-options {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-around;
+  margin-bottom: 10px;
+}
+
+.path-options button {
+  padding: 8px 16px;
+  margin-bottom: 10px;
+  background-color: #2d3439;
+  color: #fff;
+  border: 1px solid #00c46a;
+  border-radius: 5px;
+  cursor: pointer;
+}
