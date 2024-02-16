@@ -4,12 +4,12 @@ const pathsContainer = document.querySelector('.card-container');
 const adressInputForm = document.getElementById('adressInputForm');
 const fromAddressElement = document.getElementById('fromAddress');
 const toAddressElement = document.getElementById('toAddress');
-const GEOCODE_API_KEY1 = '';
-const GEOCODE_API_KEY2 = '';
+const GEOCODE_API_KEY1 = '65cf9fd2031b9021127422vsc7df31d';
+const GEOCODE_API_KEY2 = '65cfa405e758d099762575yje19a15d';
 
 // Appplication Architecture
 class App {
-    #map;
+    #map = L.map('map');
     #mapZomLevel = 13;
     #routes;
     #coordinates;
@@ -17,12 +17,32 @@ class App {
     #prevMarker = false;
 
     constructor() {
-        this.fromAddressData = this.toAddressData = []
+        this.fromAddressData = this.toAddressData = {}
+        this.defaultUserCoordinates = {};
+
+        this.routeControl;
+
+        //initilaize the map with saome random coordinates
+        this._viewMapAtCoordinate([20.29, 85.82]);
+        this._setMapView();
+
         //get user's position
         this._getPosition()
+
+
         pathsContainer.addEventListener('mouseover', this._onHoverMovePointerToDirectionMarker.bind(this));
         pathsContainer.addEventListener('click', this._onClickMovePointerToDirectionMarker.bind(this));
         adressInputForm.addEventListener('submit', this._handleAddressFormSubmission.bind(this));
+    }
+
+    _viewMapAtCoordinate(coords) {
+        this.#map.setView(coords, this.#mapZomLevel);
+    }
+
+    _setMapView() {
+        L.tileLayer('https://tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(this.#map);
     }
 
     async _makeApiCall(apiUrl) {
@@ -55,7 +75,6 @@ class App {
         }
     }
 
-
     async _handleAddressFormSubmission(event) {
         event.preventDefault();
 
@@ -67,22 +86,32 @@ class App {
         const fromAPIUrl = `https://geocode.maps.co/search?q=${encodeURIComponent(fromAddress)}&api_key=${GEOCODE_API_KEY1}`;
         const toAPIUrl = `https://geocode.maps.co/search?q=${encodeURIComponent(toAddress)}&api_key=${GEOCODE_API_KEY2}`;
 
-        try {
-            // Make asynchronous API calls simultaneously
-            const apiResponse1Promise = await this._makeApiCall(fromAPIUrl);
+        let apiResponse1Promise;
 
-            // Introduce a 1-second time gap before the second API call
-            console.log('Waiting for 1 second...');
-            await new Promise(resolve => setTimeout(resolve, 1000));
+        try {
+            if (Object.keys(this.defaultUserCoordinates).length == 0 || (fromAddress !== this.defaultUserCoordinates.displayName)) {
+                apiResponse1Promise = await this._makeApiCall(fromAPIUrl);
+
+                //waiting for 1 secorndbefore making the api call 2nd time to avoid rate limit of 1 second
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+            } else {
+                apiResponse1Promise = Promise.resolve(null);
+            }
 
             const apiResponse2Promise = await this._makeApiCall(toAPIUrl);
 
             // Wait for both API calls to complete
             const [apiResponse1, apiResponse2] = await Promise.all([apiResponse1Promise, apiResponse2Promise]);
 
-            this.fromAddressData = this._extractCoordinates(apiResponse1);
+            if (!apiResponse1) {
+                this.fromAddressData = this.defaultUserCoordinates
+            }
+            else {
+                this.fromAddressData = this._extractCoordinates(apiResponse1);
+            }
+
             this.toAddressData = this._extractCoordinates(apiResponse2);
-            console.log(this.fromAddressData, this.toAddressData);
 
             this._loadMpa(this.fromAddressData.lat, this.fromAddressData.lon, this.toAddressData.lat, this.toAddressData.lon)
 
@@ -94,21 +123,41 @@ class App {
 
     _getPosition() {
         if (navigator.geolocation) {
-            // navigator.geolocation.getCurrentPosition(
-            //     this._loadMpa.bind(this), this._onLocationPermissionDenied
-            // )
+            navigator.geolocation.getCurrentPosition(
+                this._loadUserLocationIntoForm.bind(this), this._onLocationPermissionDenied
+            )
+        }
+    }
+
+    async _loadUserLocationIntoForm(coordinates) {
+        const lat = coordinates.coords.latitude
+        const lon = coordinates.coords.longitude
+
+        this._viewMapAtCoordinate([lat, lon])
+
+        const apiURL = `https://geocode.maps.co/reverse?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&api_key=${encodeURIComponent(GEOCODE_API_KEY2)}`;
+
+        try {
+            // Make asynchronous API calls simultaneously
+            const res = await this._makeApiCall(apiURL);
+
+            this.defaultUserCoordinates = { 'lat': lat, 'lon': lon, 'displayName': res.display_name };
+
+            fromAddressElement.value = res.display_name
+
+        } catch (error) {
+            console.error('An error occurred:', error);
         }
     }
 
     _loadMpa(fromLatitude, fromLongitude, toLatitude, toLongitude) {
 
-        this.#map = L.map('map').setView([fromLatitude, fromLongitude], this.#mapZomLevel);
+        // in case there is already a path rendered , then first remove the previous path before rendering the new one
+        if (this.routeControl) {
+            this.#map.removeControl(this.routeControl)
+        }
 
-        L.tileLayer('https://tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(this.#map);
-
-        let control = L.Routing.control({
+        this.routeControl = L.Routing.control({
             waypoints: [
                 L.latLng(fromLatitude, fromLongitude),
                 L.latLng(toLatitude, toLongitude)
@@ -119,35 +168,33 @@ class App {
             // show: false
         }).addTo(this.#map);
 
+        // Listen for events when the route is changed
+        this.routeControl.on('routesfound', this._renderPathInstructionCard.bind(this));
+    }
+
+    _renderPathInstructionCard(e) {
+        console.log('routes found', e);
+
+        this.#coordinates = e.routes[0].coordinates;
+        this.#routes = e.routes[0].instructions;
+
         let html = '';
 
-        // Listen for events when the route is changed
-        control.on('routesfound', function (e) {
-            console.log('routes found', e);
+        this.#routes.forEach(function (route, index) {
 
-            this.#coordinates = e.routes[0].coordinates;
-            this.#routes = e.routes[0].instructions;
+            html += `
+                    <div class="card" data-id="${route.index}">
+                        <span class="direction-icon">${route.type}></span>
+                        <span class="instruction-text">${route.text}</span>
+                        <span class="distance">${(route.distance / 1000).toFixed(2)} KM</span>
+                    </div>
+                    `
+        });
 
+        pathsContainer.innerHTML = html
 
-            this.#routes.forEach(function (route, index) {
-
-                html += `
-                        <div class="card" data-id="${route.index}">
-                            <span class="direction-icon">${route.type}></span>
-                            <span class="instruction-text">${route.text}</span>
-                            <span class="distance">${(route.distance / 1000).toFixed(2)} KM</span>
-                        </div>
-                        `
-            });
-
-            pathsContainer.innerHTML = html
-
-            fromAddressElement.value = this.fromAddressData.displayName;
-            toAddressElement.value = this.toAddressData.displayName;
-        }.bind(this));
-
-
-
+        fromAddressElement.value = this.fromAddressData.displayName;
+        toAddressElement.value = this.toAddressData.displayName;
     }
 
     _onLocationPermissionDenied(error) {
