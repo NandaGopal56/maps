@@ -65,6 +65,7 @@ button {
   overflow-x: hidden;
   z-index: 0;
   height: 100vh;
+  overflow: scroll;
   /* Set a lower z-index for the sidebar */
 }
 
@@ -96,10 +97,6 @@ button {
   text-overflow: ellipsis;
 }
 
-.distance {
-  /* font-weight: bold; */
-}
-
 .path-options {
   display: flex;
   flex-wrap: wrap;
@@ -107,7 +104,7 @@ button {
   margin-bottom: 10px;
 }
 
-.path-options button {
+.path-options span {
   padding: 8px 16px;
   margin-bottom: 10px;
   background-color: #2d3439;

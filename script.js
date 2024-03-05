@@ -4,6 +4,7 @@ const pathsContainer = document.querySelector('.card-container');
 const adressInputForm = document.getElementById('adressInputForm');
 const fromAddressElement = document.getElementById('fromAddress');
 const toAddressElement = document.getElementById('toAddress');
+const pathOptionsContainer = document.querySelector('.paths-container');
 const GEOCODE_API_KEY1 = '65cf9fd2031b9021127422vsc7df31d';
 const GEOCODE_API_KEY2 = '65cfa405e758d099762575yje19a15d';
 
@@ -13,6 +14,7 @@ class App {
     #mapZomLevel = 13;
     #routes;
     #coordinates;
+    #defaultPathOptionIndex = 0;
     #circleIcon;
     #prevMarker = false;
 
@@ -23,8 +25,10 @@ class App {
         this.routeControl;
 
         //initilaize the map with saome random coordinates
-        this._viewMapAtCoordinate([20.29, 85.82]);
-        this._setMapView();
+        this._viewMapAtCoordinate([20.29, 88.82]);
+
+        //test dummy path
+        // this._loadMpa(48.8587831, 2.3469504, 48.85878, 52.35451)
 
         //get user's position
         this._getPosition()
@@ -32,14 +36,13 @@ class App {
 
         pathsContainer.addEventListener('mouseover', this._onHoverMovePointerToDirectionMarker.bind(this));
         pathsContainer.addEventListener('click', this._onClickMovePointerToDirectionMarker.bind(this));
+        pathOptionsContainer.addEventListener('click', this._onClickChangeRouteOpion.bind(this))
         adressInputForm.addEventListener('submit', this._handleAddressFormSubmission.bind(this));
     }
 
     _viewMapAtCoordinate(coords) {
         this.#map.setView(coords, this.#mapZomLevel);
-    }
 
-    _setMapView() {
         L.tileLayer('https://tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(this.#map);
@@ -165,7 +168,7 @@ class App {
             routeWhileDragging: true,
             useZoomParameter: true,
             showAlternatives: true,
-            // show: false
+            show: false
         }).addTo(this.#map);
 
         // Listen for events when the route is changed
@@ -175,12 +178,12 @@ class App {
     _renderPathInstructionCard(e) {
         console.log('routes found', e);
 
-        this.#coordinates = e.routes[0].coordinates;
-        this.#routes = e.routes[0].instructions;
+        this.#coordinates = e.routes;
+        this.#routes = e.routes;
 
         let html = '';
 
-        this.#routes.forEach(function (route, index) {
+        this.#routes[this.#defaultPathOptionIndex].instructions.forEach(function (route, index) {
 
             html += `
                     <div class="card" data-id="${route.index}">
@@ -195,6 +198,17 @@ class App {
 
         fromAddressElement.value = this.fromAddressData.displayName;
         toAddressElement.value = this.toAddressData.displayName;
+
+        let pathsHtml = '';
+        let PathsAvaialble = e.routes
+
+        PathsAvaialble.forEach(function (path, index) {
+            pathsHtml += `<div class="path-card card" data-id="${path.routesIndex}"> 
+                                <span> ${path.name}, ${(path.summary.totalDistance / 1000).toFixed(2)} KM, ${(path.summary.totalTime / 60).toFixed(2)} mins </span> 
+                            </div>`
+        })
+
+        pathOptionsContainer.innerHTML = pathsHtml
     }
 
     _onLocationPermissionDenied(error) {
@@ -206,8 +220,7 @@ class App {
         const pathElement = event.target.closest('.card')
 
         if (!pathElement) return;
-
-        const coords = this.#coordinates[pathElement.dataset.id];
+        const coords = this.#coordinates[this.#defaultPathOptionIndex].coordinates[pathElement.dataset.id];
 
         if (this.#prevMarker == true) {
             this.#map.removeLayer(this.#circleIcon);
@@ -227,7 +240,7 @@ class App {
 
         if (!pathElement) return;
 
-        const coords = this.#coordinates[pathElement.dataset.id];
+        const coords = this.#coordinates[this.#defaultPathOptionIndex].coordinates[pathElement.dataset.id];
 
         this.#map.setView(coords, this.#mapZomLevel, {
             animate: true,
@@ -235,6 +248,26 @@ class App {
                 duration: 1
             }
         })
+    }
+
+    _onClickChangeRouteOpion(event) {
+        const pathOptionElement = event.target.closest('.path-card')
+        if (!pathOptionElement) return;
+
+        this.#defaultPathOptionIndex = pathOptionElement.dataset.id
+        let html = '';
+        this.#routes[this.#defaultPathOptionIndex].instructions.forEach(function (route, index) {
+
+            html += `
+                    <div class="card" data-id="${route.index}">
+                        <span class="direction-icon">${route.type}></span>
+                        <span class="instruction-text">${route.text}</span>
+                        <span class="distance">${(route.distance / 1000).toFixed(2)} KM</span>
+                    </div>
+                    `
+        });
+
+        pathsContainer.innerHTML = html
     }
 }
 
