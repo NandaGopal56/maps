@@ -172,15 +172,34 @@ class App {
         }).addTo(this.#map);
 
         // Listen for events when the route is changed
-        this.routeControl.on('routesfound', this._renderPathInstructionCard.bind(this));
+        this.routeControl.on('routesfound', this._renderRoutes.bind(this));
     }
 
-    _renderPathInstructionCard(e) {
+    _renderRoutes(e) {
         console.log('routes found', e);
+
+        let pathsHtml = '';
+        let PathsAvaialble = e.routes
+
+        PathsAvaialble.forEach(function (path, index) {
+            pathsHtml += `<div class="path-card card" data-id="${path.routesIndex}"> 
+                                <span> ${path.name}, ${(path.summary.totalDistance / 1000).toFixed(2)} KM, ${(path.summary.totalTime / 60).toFixed(2)} mins </span> 
+                            </div>`
+        })
+
+        pathOptionsContainer.innerHTML = pathsHtml
+
 
         this.#coordinates = e.routes;
         this.#routes = e.routes;
 
+        this._renderRoutesInstruction()
+
+        fromAddressElement.value = this.fromAddressData.displayName;
+        toAddressElement.value = this.toAddressData.displayName;
+    }
+
+    _renderRoutesInstruction() {
         let html = '';
 
         this.#routes[this.#defaultPathOptionIndex].instructions.forEach(function (route, index) {
@@ -195,20 +214,6 @@ class App {
         });
 
         pathsContainer.innerHTML = html
-
-        fromAddressElement.value = this.fromAddressData.displayName;
-        toAddressElement.value = this.toAddressData.displayName;
-
-        let pathsHtml = '';
-        let PathsAvaialble = e.routes
-
-        PathsAvaialble.forEach(function (path, index) {
-            pathsHtml += `<div class="path-card card" data-id="${path.routesIndex}"> 
-                                <span> ${path.name}, ${(path.summary.totalDistance / 1000).toFixed(2)} KM, ${(path.summary.totalTime / 60).toFixed(2)} mins </span> 
-                            </div>`
-        })
-
-        pathOptionsContainer.innerHTML = pathsHtml
     }
 
     _onLocationPermissionDenied(error) {
@@ -267,19 +272,8 @@ class App {
         if (!pathOptionElement) return;
 
         this.#defaultPathOptionIndex = pathOptionElement.dataset.id
-        let html = '';
-        this.#routes[this.#defaultPathOptionIndex].instructions.forEach(function (route, index) {
 
-            html += `
-                    <div class="card" data-id="${route.index}">
-                        <span class="direction-icon">${route.type}></span>
-                        <span class="instruction-text">${route.text}</span>
-                        <span class="distance">${(route.distance / 1000).toFixed(2)} KM</span>
-                    </div>
-                    `
-        });
-
-        pathsContainer.innerHTML = html
+        this._renderRoutesInstruction()
     }
 }
 
